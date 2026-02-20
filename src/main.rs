@@ -1,4 +1,14 @@
 use thiserror::Error as DError;
+use lazy_static::lazy_static;
+use clap::Parser;
+
+use std::sync::RwLock;
+#[derive(Parser)]
+#[command(version, about, long_about = None)]
+struct Cli {
+    /// Optional name to operate on
+    allow_pass: Option<bool>,
+}
 
 #[derive(DError, Debug)]
 enum Error {
@@ -6,11 +16,13 @@ enum Error {
     Test,
 }
 
-const ALLOW_PARAM_PASS: bool = true;
+lazy_static! {
+    static ref ALLOW_PARAM_PASS: RwLock<bool> = RwLock::new(false);
+}
 
 macro_rules! ok_or_none {
     ($expr:expr) => {{
-        if ALLOW_PARAM_PASS {
+        if *ALLOW_PARAM_PASS.read().unwrap() {
             match $expr {
                 Ok(r) => Ok(r),
                 Err(e) => {
@@ -34,6 +46,13 @@ fn this_passes() -> Result<Option<u32>, Error> {
 }
 
 fn main() -> Result<(), Error> {
+    let cli = Cli::parse();
+
+    if let Some(allow_pass) = cli.allow_pass {
+        let mut this_run = ALLOW_PARAM_PASS.write().unwrap();
+        *this_run = allow_pass;
+    }
+
     let x: Option<u32> = ok_or_none!(this_passes())?;
 
     let y = ok_or_none!(this_errors())?;
