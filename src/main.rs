@@ -1,8 +1,7 @@
 use thiserror::Error as DError;
-use lazy_static::lazy_static;
 use clap::Parser;
 
-use std::sync::RwLock;
+use std::sync::Mutex;
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
 struct Cli {
@@ -16,13 +15,11 @@ enum Error {
     Test,
 }
 
-lazy_static! {
-    static ref ALLOW_PARAM_PASS: RwLock<bool> = RwLock::new(false);
-}
+static ALLOW_PARAM_PASS: Mutex<bool> = Mutex::new(false);
 
 macro_rules! ok_or_none {
     ($expr:expr) => {{
-        if *ALLOW_PARAM_PASS.read().unwrap() {
+        if *ALLOW_PARAM_PASS.lock().unwrap() {
             match $expr {
                 Ok(r) => Ok(r),
                 Err(e) => {
@@ -49,7 +46,7 @@ fn main() -> Result<(), Error> {
     let cli = Cli::parse();
 
     if let Some(allow_pass) = cli.allow_pass {
-        let mut this_run = ALLOW_PARAM_PASS.write().unwrap();
+        let mut this_run = ALLOW_PARAM_PASS.lock().unwrap();
         *this_run = allow_pass;
     }
 
